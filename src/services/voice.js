@@ -7,6 +7,7 @@ import {
 import prism from 'prism-media';
 import { UserAudioBuffer } from '../utils/audio.js';
 import { transcribe } from './transcription.js';
+import { scan, postTaskConfirmation } from './taskDetector.js';
 
 // One session per guild
 const sessions = new Map();
@@ -114,6 +115,16 @@ export class VoiceSession {
       if (result) {
         this.transcript.push(result);
         await this.textChannel.send(`**${result.username}:** ${result.text}`);
+
+        // Detect action items from transcription
+        try {
+          const candidates = scan(result.text, this.guild);
+          for (const candidate of candidates) {
+            await postTaskConfirmation(this.textChannel, candidate, this.guild.id);
+          }
+        } catch (err) {
+          console.error('Task detection failed:', err.message);
+        }
       }
     } catch (err) {
       console.error('Transcription failed:', err.message);

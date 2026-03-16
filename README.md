@@ -1,6 +1,6 @@
 # Discord PMO Bot
 
-A self-hosted Discord bot that **transcribes voice meetings** using local AI (whisper.cpp) and **sends recurring meeting reminders**. No paid APIs, no cloud dependencies — everything runs on your machine.
+A self-hosted Discord bot that **transcribes voice meetings** using local AI (whisper.cpp), **sends recurring meeting reminders**, and **tracks tasks** with auto-detection from transcriptions. No paid APIs, no cloud dependencies — everything runs on your machine.
 
 ## Features
 
@@ -17,6 +17,14 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 - Optional role mentions to ping the right people
 - All times in Philippine Time (Asia/Manila)
 
+### Task Management
+- Create, edit, view, and track tasks with 5 statuses (To Do → In Progress → In Review → Done → Cancelled)
+- 4 priority levels: Low, Medium, High, Critical
+- **Auto-detection:** Action items spoken during voice transcription are detected and offered as tasks via confirmation buttons
+- Paginated task list with filters (assignee, status, priority)
+- Recurring check-in reminders (daily/weekly) that post open tasks grouped by assignee with overdue highlighting
+- Soft delete — cancelled tasks are preserved in the database
+
 ## Slash Commands
 
 | Command | Description |
@@ -27,6 +35,15 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 | `/schedule list` | Show all schedules for this server |
 | `/schedule edit <id> [fields...]` | Update specific fields of a schedule |
 | `/schedule remove <id>` | Delete a schedule |
+| `/task create <title> <assignee> [priority] [due_date] [description]` | Create a new task |
+| `/task list [assignee] [status] [priority]` | List tasks with optional filters |
+| `/task edit <id> [fields...]` | Update task fields |
+| `/task status <id> <new_status>` | Quick status change |
+| `/task view <id>` | View detailed task info |
+| `/task delete <id>` | Cancel a task (soft delete) |
+| `/task-reminder set <frequency> <time> <channel> [days]` | Set a recurring task check-in |
+| `/task-reminder list` | Show all task reminders |
+| `/task-reminder remove <id>` | Remove a task reminder |
 
 ## Prerequisites
 
@@ -91,10 +108,13 @@ discord-pmo-bot/
 │   ├── commands/
 │   │   ├── deploy.js         # Slash command registration
 │   │   ├── transcribe.js     # /transcribe start|stop
-│   │   └── schedule.js       # /schedule set|edit|list|remove
+│   │   ├── schedule.js       # /schedule set|edit|list|remove
+│   │   ├── task.js           # /task create|list|edit|status|view|delete
+│   │   └── taskReminder.js   # /task-reminder set|list|remove
 │   ├── services/
 │   │   ├── database.js       # SQLite CRUD (better-sqlite3)
 │   │   ├── scheduler.js      # Cron-based reminder engine
+│   │   ├── taskDetector.js   # Action item detection & confirmation flow
 │   │   ├── voice.js          # Voice connection & audio streams
 │   │   └── transcription.js  # whisper.cpp integration
 │   └── utils/

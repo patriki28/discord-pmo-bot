@@ -8,10 +8,11 @@
 
 ## 1. Overview
 
-Discord PMO Bot is a self-hosted Discord bot that automates two core project management tasks:
+Discord PMO Bot is a self-hosted Discord bot that automates core project management tasks:
 
 1. **Voice Transcription** — automatically transcribes everything said in Discord voice channels using local speech-to-text (whisper.cpp)
 2. **Meeting Reminders** — sends configurable reminders before scheduled recurring meetings
+3. **Task Management** — tracks action items with auto-detection from transcriptions, full CRUD via slash commands, and recurring check-in reminders
 
 The bot is designed for small-to-medium teams running standups, syncs, or recurring meetings on Discord who need transcripts without paying for third-party services.
 
@@ -33,6 +34,7 @@ The bot is designed for small-to-medium teams running standups, syncs, or recurr
 |------|---------------|
 | Reduce missed meetings | Reminder delivery rate > 99% for scheduled meetings |
 | Provide usable transcripts | Transcriptions posted within seconds of speech ending |
+| Track action items | Tasks created within seconds of detection or manual input |
 | Zero recurring cost | Fully self-hosted, no paid APIs |
 | Minimal setup friction | Bot operational within 15 minutes of cloning the repo |
 
@@ -83,6 +85,43 @@ The bot is designed for small-to-medium teams running standups, syncs, or recurr
 - Reminder offset is configurable per schedule (default: 30 minutes, range: 1–1440)
 - Only the schedule creator or users with Manage Server permission can edit/remove schedules
 
+### 6.3 Task Management
+
+**Slash Commands:**
+- `/task create <title> <assignee> [priority] [due_date] [description]` — create a task manually
+- `/task list [assignee] [status] [priority]` — list tasks with optional filters, paginated (10 per page)
+- `/task edit <id> [title] [status] [priority] [assignee] [due_date]` — update task fields
+- `/task status <id> <new_status>` — quick status change
+- `/task view <id>` — detailed task embed
+- `/task delete <id>` — soft delete (sets status to Cancelled)
+
+**Task Statuses (5-state):** To Do → In Progress → In Review → Done → Cancelled
+
+**Priority Levels (4):** Low, Medium, High, Critical
+
+**Auto-Detection from Transcription:**
+1. During voice transcription, each utterance is scanned for action item patterns:
+   - `action item: ...`, `task: ...`, `TODO: ...`
+   - `@user needs to/should/will/must ...`
+   - `assign to @user ...`
+   - `@user, please ...`
+2. Detected candidates are posted as confirmation embeds with **Create Task** / **Dismiss** buttons
+3. If assignee is detected from name, the task is created immediately on confirm
+4. If assignee is unknown, a user-select menu is shown to pick an assignee
+5. Pending confirmations expire after 5 minutes
+
+**Recurring Check-In Reminders:**
+- `/task-reminder set <frequency> <time> <channel> [days]` — set daily or weekly check-in
+- `/task-reminder list` — view configured reminders
+- `/task-reminder remove <id>` — remove a reminder
+- At the scheduled time, the bot posts an embed listing all open tasks grouped by assignee
+- Overdue tasks (past due date) are highlighted
+
+**Constraints:**
+- Auto-detected tasks default to Medium priority
+- `/task delete` is a soft delete (status set to Cancelled)
+- Only the task creator or users with Manage Server permission can delete tasks
+
 ## 7. Technical Architecture
 
 | Component | Technology |
@@ -125,6 +164,33 @@ CREATE TABLE schedules (
   created_by TEXT NOT NULL,      -- Discord user ID
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  assignee_id TEXT NOT NULL,     -- Discord user ID
+  created_by TEXT NOT NULL,      -- Discord user ID
+  status TEXT NOT NULL DEFAULT 'todo',      -- todo|in_progress|in_review|done|cancelled
+  priority TEXT NOT NULL DEFAULT 'medium',  -- low|medium|high|critical
+  due_date TEXT,                 -- YYYY-MM-DD (nullable)
+  source TEXT NOT NULL DEFAULT 'manual',    -- manual|transcription
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE task_reminders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  frequency TEXT NOT NULL DEFAULT 'daily',  -- daily|weekly
+  time TEXT NOT NULL,            -- "HH:MM" in 24h PHT
+  days TEXT,                     -- comma-separated days for weekly (nullable)
+  created_by TEXT NOT NULL,      -- Discord user ID
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ## 9. Permissions
@@ -134,6 +200,9 @@ CREATE TABLE schedules (
 | Start/stop transcription | Any server member in a voice channel |
 | Create a schedule | Any server member |
 | Edit/remove a schedule | Schedule creator OR users with Manage Server permission |
+| Create/edit/view/list tasks | Any server member |
+| Delete a task | Task creator OR users with Manage Server permission |
+| Manage task reminders | Any server member |
 | Bot channel permissions required | Connect, Speak, Send Messages, Embed Links, Mention Everyone |
 
 ## 10. Privacy & Data Handling
@@ -158,6 +227,8 @@ CREATE TABLE schedules (
 - Transcription accuracy depends on whisper.cpp medium model and audio quality
 - No web interface — all interaction via Discord slash commands
 - Schedule reminders require the bot to be running continuously (no catch-up for missed reminders)
+- Task auto-detection relies on keyword patterns; not all action items will be caught
+- No maximum task limit per guild
 
 ## 13. Future Considerations
 
