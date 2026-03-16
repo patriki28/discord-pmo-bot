@@ -1,0 +1,10 @@
+services:
+  pmo-bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WHISPER_CPP_PATH: /opt/whisper/bin/whisper-cli
+      WHISPER_MODEL_PATH: /opt/whisper/models/ggml-medium.bin
+    volumes:
+      - ./data:/app/data
