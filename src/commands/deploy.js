@@ -2,8 +2,10 @@ import { REST, Routes } from 'discord.js';
 import { config } from '../config.js';
 import { data as transcribeData } from './transcribe.js';
 import { data as scheduleData } from './schedule.js';
+import { data as taskData } from './task.js';
+import { data as taskReminderData } from './taskReminder.js';
 
-const commands = [transcribeData.toJSON(), scheduleData.toJSON()];
+const commands = [transcribeData.toJSON(), scheduleData.toJSON(), taskData.toJSON(), taskReminderData.toJSON()];
 
 const rest = new REST({ version: '10' }).setToken(config.discordToken);
 
