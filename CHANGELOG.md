@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] - 2026-03-19
+
+### Added
+
+- **Meeting minutes transcript export** — `/transcribe stop` now writes a markdown transcript file to `transcripts/` (or `TRANSCRIPTS_DIR`) and optionally attaches it to Discord when file size allows.
+- **Voice session hardening** — Added speaking subscription guard to avoid duplicate user stream subscriptions in voice receive flows.
+- **Unit test suite (Vitest)** — Added tests for audio utilities, transcription service, transcribe command handlers, voice transcript formatting, and config validation.
+- **Developer Portal setup coverage** — Updated docs for required Discord scopes, intents, and permissions (including `Attach Files`).
+- **Optional configuration** — Added support for `GUILD_ID` (faster guild command registration) and `TRANSCRIPTS_DIR`.
+
+### Changed
+
+- **Config validation behavior** — `deploy`/startup no longer hard-fails due to Whisper path checks unless transcription is invoked. Whisper binary/model checks are now performed when transcription runs.
+- **Transcription error messaging** — Improved ENOENT and missing path diagnostics with actionable remediation hints.
+- **Documentation updates** — README and PRD now reflect transcript file output and updated permissions.
+
+### Fixed
+
+- Fixed `/transcribe start` runtime failures caused by placeholder Whisper paths by improving validation flow and documentation.
+- Fixed `/transcribe stop` behavior to produce persistent meeting minutes output, reducing risk of transcript loss after message scroll/history cleanup.
+
 ## [1.0.0] - 2025-03-17
 
 ### Added

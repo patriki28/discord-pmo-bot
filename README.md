@@ -9,6 +9,7 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 - Powered by [whisper.cpp](https://github.com/ggerganov/whisper.cpp) (medium model) — runs locally, supports multiple languages
 - Per-user audio buffering with automatic silence detection
 - Full timestamped transcript posted when the session ends
+- **Meeting minutes file** — `/transcribe stop` creates a markdown file in `transcripts/` (configurable) and optionally attaches it to Discord
 - No audio stored permanently — temp files are deleted immediately
 
 ### Meeting Reminders
@@ -30,7 +31,7 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 | Command | Description |
 |---------|-------------|
 | `/transcribe start` | Bot joins your voice channel and starts transcribing |
-| `/transcribe stop` | Bot stops, posts full transcript, and leaves |
+| `/transcribe stop` | Bot stops, saves meeting minutes to a file, posts full transcript, and leaves |
 | `/schedule set <days> <time> <channel> [reminder] [mention]` | Create a recurring meeting schedule |
 | `/schedule list` | Show all schedules for this server |
 | `/schedule edit <id> [fields...]` | Update specific fields of a schedule |
@@ -57,9 +58,9 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application
 2. Under the **Bot** tab, reset and copy the bot token
-3. Enable **Privileged Gateway Intents**: `Server Members Intent` and `Message Content Intent`
+3. Enable **Privileged Gateway Intents**: `Server Members Intent` (required for voice transcription; `Message Content Intent` is not needed)
 4. Under **OAuth2 > URL Generator**, select scopes: `bot`, `applications.commands`
-5. Select bot permissions: `Connect`, `Speak`, `Send Messages`, `Embed Links`, `Mention Everyone`
+5. Select bot permissions: `Connect`, `Speak`, `Send Messages`, `Embed Links`, `Attach Files`, `Mention Everyone`
 6. Open the generated URL to invite the bot to your server
 
 ### 2. Install whisper.cpp
@@ -89,6 +90,9 @@ DISCORD_TOKEN=your-bot-token-here
 DISCORD_CLIENT_ID=your-client-id-here
 WHISPER_CPP_PATH=C:/path/to/whisper.cpp/build/bin/Release/whisper-cli.exe
 WHISPER_MODEL_PATH=C:/path/to/whisper.cpp/models/ggml-medium.bin
+
+# Optional: TRANSCRIPTS_DIR=./transcripts  (where meeting minutes are saved)
+# Optional: GUILD_ID=your-server-id        (for faster slash command registration)
 ```
 
 ### 4. Register slash commands and start
@@ -135,11 +139,25 @@ discord-pmo-bot/
 | Database | SQLite via better-sqlite3 |
 | Scheduling | node-cron |
 
+## Testing
+
+```bash
+npm test
+```
+
+Runs the unit test suite (Vitest).
+
+## Usage
+
+- Quick usage guide: `docs/USAGE.md`
+- Command reference: `docs/COMMANDS.md`
+- Deployment/troubleshooting: `docs/DEPLOYMENT.md`
+
 ## Privacy
 
 - A consent notice is posted when transcription starts
 - No audio is stored permanently — only in memory during the session
-- Transcriptions are posted to Discord only, not saved to the database
+- Transcription text is posted to Discord and saved as markdown files in `transcripts/` (configurable)
 - Everything runs locally — no data leaves your machine except to Discord's API
 
 ## License
