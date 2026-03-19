@@ -10,6 +10,7 @@ A self-hosted Discord bot that **transcribes voice meetings** using local AI (wh
 - Per-user audio buffering with automatic silence detection
 - Full timestamped transcript posted when the session ends
 - **Meeting minutes file** — `/transcribe stop` creates a markdown file in `transcripts/` (configurable) and optionally attaches it to Discord
+- Profile-based transcription tuning (`TRANSCRIBE_PROFILE=accuracy|balanced|fast`) with configurable language, retries, timeout, and segmentation controls
 - No audio stored permanently — temp files are deleted immediately
 
 ### Meeting Reminders
@@ -93,6 +94,10 @@ WHISPER_MODEL_PATH=C:/path/to/whisper.cpp/models/ggml-medium.bin
 
 # Optional: TRANSCRIPTS_DIR=./transcripts  (where meeting minutes are saved)
 # Optional: GUILD_ID=your-server-id        (for faster slash command registration)
+# Optional: TRANSCRIBE_PROFILE=balanced
+# Optional: TRANSCRIBE_LANGUAGE=en
+# Optional: TRANSCRIBE_SILENCE_MS=1000
+# Optional: TRANSCRIBE_TIMEOUT_MS=35000
 ```
 
 ### 4. Register slash commands and start
@@ -146,6 +151,12 @@ npm test
 ```
 
 Runs the unit test suite (Vitest).
+
+```bash
+npm run test:quality
+```
+
+Runs transcription quality fixture gates.
 
 ## Usage
 

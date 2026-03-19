@@ -3,7 +3,17 @@ import path from 'path';
 import { buildMeetingMinutesMarkdown, getSession } from '../../services/voice.js';
 
 vi.mock('../../config.js', () => ({
-  config: { transcriptsDir: './transcripts' },
+  config: {
+    transcriptsDir: './transcripts',
+    transcription: {
+      silenceMs: 1000,
+      minAudioMs: 180,
+      maxSegmentMs: 15000,
+      overlapMs: 350,
+      normalizeAudio: true,
+      downmixMono: true,
+    },
+  },
 }));
 
 describe('buildMeetingMinutesMarkdown', () => {

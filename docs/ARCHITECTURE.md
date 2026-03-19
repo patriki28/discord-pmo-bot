@@ -9,7 +9,7 @@ Discord PMO Bot is a single-process Node.js application using discord.js v14. It
 ```
 src/
   index.js              Entry point — client setup, interaction routing
-  config.js             Validates and exports env vars (token, client ID, whisper paths)
+  config.js             Validates env vars and resolves transcription profile settings
   commands/
     transcribe.js       /transcribe start|stop — voice session lifecycle
     schedule.js         /schedule set|list|edit|remove — meeting reminder CRUD
@@ -17,13 +17,13 @@ src/
     taskReminder.js     /task-reminder set|list|remove — check-in reminder CRUD
     deploy.js           Registers slash commands with Discord API (run separately)
   services/
-    voice.js            VoiceSession class — joins channel, captures audio, flushes transcriptions
-    transcription.js    Shells out to whisper-cli, manages temp WAV files
+    voice.js            VoiceSession lifecycle, segmentation, context carryover
+    transcription.js    whisper-cli execution with queue, retry, and telemetry
     database.js         SQLite via better-sqlite3 — all CRUD operations
     scheduler.js        Cron-based reminder engine (meetings + task check-ins)
     taskDetector.js     Regex pattern matching on transcript text, confirmation UI
   utils/
-    audio.js            PCM buffering (UserAudioBuffer) and WAV header construction
+    audio.js            PCM buffering, WAV conversion, downmix/normalization helpers
 ```
 
 ## Data Flow
@@ -48,7 +48,7 @@ sequenceDiagram
 
     loop On speech end
         VS->>T: transcribe(pcmBuffer, username)
-        T->>T: PCM → WAV → whisper-cli → text
+        T->>T: preprocess → PCM→WAV → queued whisper-cli → retry/telemetry → text
         T-->>VS: { username, text, timestamp }
         VS->>Discord: Post transcription line
         VS->>TD: scan(text, guild)
@@ -183,4 +183,11 @@ All time handling uses **Asia/Manila (PHT, UTC+8)**. Hardcoded in `scheduler.js`
 
 ## External Binary
 
-**whisper.cpp** (`whisper-cli`) — called as a child process for speech-to-text. Path configured via `WHISPER_CPP_PATH` and `WHISPER_MODEL_PATH` env vars. Uses 4 threads, auto language detection, 30-second timeout.
+**whisper.cpp** (`whisper-cli`) — called as a child process for speech-to-text. Path configured via `WHISPER_CPP_PATH` and `WHISPER_MODEL_PATH`.
+
+Runtime tuning is controlled by transcription env vars:
+- `TRANSCRIBE_PROFILE` (`accuracy`, `balanced`, `fast`)
+- `TRANSCRIBE_LANGUAGE`
+- `TRANSCRIBE_THREADS`, `TRANSCRIBE_TIMEOUT_MS`, `TRANSCRIBE_RETRIES`
+- `TRANSCRIBE_SILENCE_MS`, `TRANSCRIBE_MIN_AUDIO_MS`, `TRANSCRIBE_MAX_SEGMENT_MS`, `TRANSCRIBE_OVERLAP_MS`
+- `TRANSCRIBE_NORMALIZE_AUDIO`, `TRANSCRIBE_DOWNMIX_MONO`

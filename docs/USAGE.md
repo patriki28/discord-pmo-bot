@@ -38,6 +38,8 @@ What happens:
 - Bot joins your voice channel.
 - Consent notice is posted.
 - Speech lines are transcribed and posted in text.
+- Pipeline uses profile settings from `.env` (`TRANSCRIBE_PROFILE`, language, timeout, retries, segmentation thresholds).
+- Adjacent chunks keep short context carryover to reduce phrase splits.
 
 ### Stop transcription
 
@@ -100,6 +102,14 @@ This runs unit tests for:
 - transcription service behavior
 - audio utilities
 - config validation
+
+Quality gate suite:
+
+```bash
+npm run test:quality
+```
+
+This runs the transcription quality fixture checks and task detection quality checks.
 
 ## 7) Troubleshooting quick checks
 

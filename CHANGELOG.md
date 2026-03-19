@@ -13,12 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Unit test suite (Vitest)** — Added tests for audio utilities, transcription service, transcribe command handlers, voice transcript formatting, and config validation.
 - **Developer Portal setup coverage** — Updated docs for required Discord scopes, intents, and permissions (including `Attach Files`).
 - **Optional configuration** — Added support for `GUILD_ID` (faster guild command registration) and `TRANSCRIPTS_DIR`.
+- **Transcription quality pipeline controls** — Added configurable `TRANSCRIBE_*` profile and tuning environment variables.
+- **Quality planning docs** — Added `docs/TRANSCRIPTION-ACCURACY-ENHANCEMENT-PLAN.md` and `docs/TRANSCRIPTION-QUALITY-TEST-MATRIX.md`.
+- **Quality fixture tests** — Added `npm run test:quality` with baseline fixture WER/task-detection gate tests.
 
 ### Changed
 
 - **Config validation behavior** — `deploy`/startup no longer hard-fails due to Whisper path checks unless transcription is invoked. Whisper binary/model checks are now performed when transcription runs.
 - **Transcription error messaging** — Improved ENOENT and missing path diagnostics with actionable remediation hints.
 - **Documentation updates** — README and PRD now reflect transcript file output and updated permissions.
+- **Transcription internals** — Added queue/retry controls, context carryover prompts, and preprocessing hooks (mono downmix + normalization).
 
 ### Fixed
 

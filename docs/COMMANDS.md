@@ -12,13 +12,16 @@ Join your voice channel and begin transcribing.
 
 - **Requires:** You must be in a voice channel.
 - **Limit:** One active session per server.
-- **Behavior:** Posts a consent notice, joins the channel (muted), and transcribes each speaker's audio in real time via whisper.cpp. Detected action items trigger a confirmation prompt.
+- **Behavior:** Posts a consent notice, joins the channel (muted), and transcribes each speaker's audio in real time via whisper.cpp.
+- **Quality Pipeline:** Uses configurable profile + segmentation settings (`TRANSCRIBE_PROFILE`, `TRANSCRIBE_SILENCE_MS`, `TRANSCRIBE_LANGUAGE`), context carryover prompts, and queue/retry controls.
+- **Task Detection:** Detected action items trigger a confirmation prompt.
 
 ### `/transcribe stop`
 
 Stop the active transcription session.
 
 - **Behavior:** Flushes remaining audio, posts the full timestamped transcript, and disconnects from the voice channel.
+- **Output:** Also writes meeting minutes to a markdown file and attaches it to Discord when size allows.
 
 ---
 

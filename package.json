@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "deploy": "node src/commands/deploy.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:quality": "vitest run src/__tests__/quality"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "clean-standup-1",
+    "reference": "Alice finished the API integration and will deploy this afternoon",
+    "hypothesis": "Alice finished API integration and will deploy this afternoon",
+    "expectTask": false
+  },
+  {
+    "id": "action-item-1",
+    "reference": "Action item: prepare the sprint demo deck by Friday",
+    "hypothesis": "action item prepare the sprint demo deck by friday",
+    "expectTask": true
+  },
+  {
+    "id": "task-assignment-1",
+    "reference": "Ben should update the migration guide before release",
+    "hypothesis": "Ben should update migration guide before release",
+    "expectTask": true
+  }
+]

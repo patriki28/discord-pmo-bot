@@ -7,7 +7,12 @@ import {
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import prism from 'prism-media';
-import { UserAudioBuffer } from '../utils/audio.js';
+import {
+  UserAudioBuffer,
+  downmixStereoToMono,
+  normalizePcm16,
+  pcmDurationMs,
+} from '../utils/audio.js';
 import { config } from '../config.js';
 import { transcribe } from './transcription.js';
 import { scan, postTaskConfirmation } from './taskDetector.js';
@@ -28,6 +33,8 @@ export class VoiceSession {
     this.textChannel = textChannel;
     this.connection = null;
     this.userBuffers = new Map();
+    this.userContexts = new Map();
+    this.userOverlapBuffers = new Map();
     this.transcript = [];
     this.active = false;
     this.startedAt = null;
@@ -76,7 +83,7 @@ export class VoiceSession {
     const opusStream = receiver.subscribe(userId, {
       end: {
         behavior: EndBehaviorType.AfterSilence,
-        duration: 1000,
+        duration: Number(config.transcription.silenceMs || 1000),
       },
     });
 
@@ -115,12 +122,50 @@ export class VoiceSession {
     const buffer = this.userBuffers.get(userId);
     if (!buffer?.hasData) return;
 
-    const pcm = buffer.flush();
-    if (!pcm || pcm.length < 9600) return; // Skip very short audio (<100ms)
+    let pcm = buffer.flush();
+    if (!pcm || pcm.length < 9600) return;
+
+    // Prepend overlap from previous chunk to improve continuity.
+    const overlap = this.userOverlapBuffers.get(userId);
+    if (overlap && overlap.length > 0) {
+      pcm = Buffer.concat([overlap, pcm]);
+    }
+
+    let channels = 2;
+    if (config.transcription.downmixMono) {
+      pcm = downmixStereoToMono(pcm);
+      channels = 1;
+    }
+    if (config.transcription.normalizeAudio) {
+      pcm = normalizePcm16(pcm);
+    }
+
+    const durationMs = pcmDurationMs(pcm, channels);
+    if (durationMs < Number(config.transcription.minAudioMs || 100)) {
+      return;
+    }
+
+    const overlapMs = Number(config.transcription.overlapMs || 0);
+    if (overlapMs > 0) {
+      this.userOverlapBuffers.set(userId, tailByMs(pcm, overlapMs, channels));
+    }
+
+    if (durationMs > Number(config.transcription.maxSegmentMs || 30000)) {
+      console.log(
+        `[transcription.telemetry] ${JSON.stringify({
+          event: 'segment_exceeds_target',
+          userId,
+          durationMs,
+          targetMs: Number(config.transcription.maxSegmentMs || 30000),
+        })}`
+      );
+    }
 
     try {
-      const result = await transcribe(pcm, buffer.username);
+      const prompt = this.userContexts.get(userId) || null;
+      const result = await transcribe(pcm, buffer.username, { prompt });
       if (result) {
+        this.userContexts.set(userId, result.text.slice(-200));
         this.transcript.push(result);
         await this.textChannel.send(`**${result.username}:** ${result.text}`);
 
@@ -200,6 +245,18 @@ export class VoiceSession {
       }
     }
   }
+}
+
+function tailByMs(pcmBuffer, overlapMs, channels) {
+  if (!pcmBuffer || overlapMs <= 0) return Buffer.alloc(0);
+  const sampleRate = 48000;
+  const bytesPerSample = 2;
+  const bytesPerFrame = channels * bytesPerSample;
+  const frames = Math.floor((sampleRate * overlapMs) / 1000);
+  const bytes = frames * bytesPerFrame;
+  if (bytes <= 0) return Buffer.alloc(0);
+  if (bytes >= pcmBuffer.length) return Buffer.from(pcmBuffer);
+  return pcmBuffer.subarray(pcmBuffer.length - bytes);
 }
 
 /**

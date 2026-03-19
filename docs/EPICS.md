@@ -98,14 +98,15 @@ Structured backlog for Discord PMO Bot. Done epics (1–5) cover v1.0 delivered 
 
 ---
 
-## EPIC 9: Transcription Quality & Flexibility — Planned
+## EPIC 9: Transcription Quality & Flexibility — In Progress
 
 | ID | Story | Acceptance Criteria | Priority |
 |----|-------|---------------------|----------|
-| TQ-1 | As an operator, I want to choose the whisper model per session (tiny/small/medium/large). | Optional `model` param on `/transcribe start`. | P2 |
-| TQ-2 | As an operator, I want configurable whisper.cpp thread count via env var. | `WHISPER_THREADS` env var (default 4). | P1 |
-| TQ-3 | As a team member, I want concurrent transcription in different channels. | Key sessions by `guildId:channelId`; configurable `MAX_CONCURRENT_SESSIONS`. | P2 |
-| TQ-4 | As a team member, I want per-session language selection. | Optional `language` param on `/transcribe start`. | P2 |
+| TQ-1 | As an operator, I want profile-based transcription tuning for local runtime tradeoffs. | `TRANSCRIBE_PROFILE=accuracy|balanced|fast` controls defaults. | P0 |
+| TQ-2 | As an operator, I want configurable language and thread/timeout controls. | `TRANSCRIBE_LANGUAGE`, `TRANSCRIBE_THREADS`, `TRANSCRIBE_TIMEOUT_MS` are supported. | P0 |
+| TQ-3 | As an operator, I want segmentation and overlap controls to reduce phrase splitting. | `TRANSCRIBE_SILENCE_MS`, `TRANSCRIBE_MIN_AUDIO_MS`, `TRANSCRIBE_OVERLAP_MS` are supported. | P0 |
+| TQ-4 | As an operator, I want retry/queue controls and telemetry to reduce silent failures. | Retry/queue env vars + structured telemetry logs exist. | P0 |
+| TQ-5 | As QA, I want fixture-based transcription quality checks in CI. | Test matrix exists and gate policy is documented. | P1 |
 
 ---
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { UserAudioBuffer, pcmToWav } from '../../utils/audio.js';
+import {
+  UserAudioBuffer,
+  pcmToWav,
+  downmixStereoToMono,
+  normalizePcm16,
+  pcmDurationMs,
+} from '../../utils/audio.js';
 
 describe('UserAudioBuffer', () => {
   it('TC-A1: push, flush, and hasData behave correctly', () => {
@@ -38,5 +44,35 @@ describe('pcmToWav', () => {
     expect(wav.readUInt16LE(22)).toBe(2); // stereo
     expect(wav.readUInt32LE(24)).toBe(48000);
     expect(wav.readUInt32LE(40)).toBe(100);
+  });
+});
+
+describe('audio preprocessing', () => {
+  it('downmixes stereo PCM to mono', () => {
+    const stereo = Buffer.alloc(8);
+    // two frames: [1000,-1000], [500,500]
+    stereo.writeInt16LE(1000, 0);
+    stereo.writeInt16LE(-1000, 2);
+    stereo.writeInt16LE(500, 4);
+    stereo.writeInt16LE(500, 6);
+    const mono = downmixStereoToMono(stereo);
+    expect(mono.length).toBe(4);
+    expect(mono.readInt16LE(0)).toBe(0);
+    expect(mono.readInt16LE(2)).toBe(500);
+  });
+
+  it('normalizes PCM16 amplitudes upward', () => {
+    const pcm = Buffer.alloc(4);
+    pcm.writeInt16LE(1000, 0);
+    pcm.writeInt16LE(-1000, 2);
+    const normalized = normalizePcm16(pcm, 0.9);
+    expect(Math.abs(normalized.readInt16LE(0))).toBeGreaterThan(1000);
+    expect(Math.abs(normalized.readInt16LE(2))).toBeGreaterThan(1000);
+  });
+
+  it('computes PCM duration in milliseconds', () => {
+    // 48kHz mono 16-bit, 48 samples = 1ms => 96 bytes
+    const mono1ms = Buffer.alloc(96);
+    expect(pcmDurationMs(mono1ms, 1)).toBe(1);
   });
 });

@@ -17,6 +17,11 @@ Copy `.env.example` to `.env` and fill in:
 | `DISCORD_CLIENT_ID` | Application ID from Discord Developer Portal |
 | `WHISPER_CPP_PATH` | Absolute path to `whisper-cli` binary |
 | `WHISPER_MODEL_PATH` | Absolute path to GGML model file (e.g., `ggml-medium.bin`) |
+| `TRANSCRIBE_PROFILE` | Optional preset: `accuracy`, `balanced`, `fast` |
+| `TRANSCRIBE_LANGUAGE` | Optional language override (`en`, `auto`, etc.) |
+| `TRANSCRIBE_TIMEOUT_MS` | Optional whisper timeout override |
+| `TRANSCRIBE_RETRIES` | Optional retry attempts for failed chunks |
+| `TRANSCRIBE_SILENCE_MS` | Optional end-of-utterance silence threshold |
 
 ## whisper.cpp Compilation
 
@@ -237,6 +242,7 @@ docker compose exec pmo-bot node src/commands/deploy.js
 - WAL mode is enabled for better concurrent read performance.
 - Temp audio files are written to the OS temp directory and cleaned up immediately after transcription.
 - All times use Asia/Manila (PHT) timezone.
+- Transcription telemetry logs are emitted as JSON-style lines with prefix `[transcription.telemetry]`.
 
 ## Troubleshooting
 

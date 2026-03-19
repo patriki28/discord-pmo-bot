@@ -31,7 +31,8 @@ const PATTERNS = [
  */
 export function scan(text, guild) {
   const candidates = [];
-  const sentences = text.split(/[.!?\n]+/).map(s => s.trim()).filter(Boolean);
+  const cleaned = normalizeTranscriptText(text);
+  const sentences = cleaned.split(/[.!?\n]+/).map((s) => s.trim()).filter(Boolean);
 
   for (const sentence of sentences) {
     for (const pattern of PATTERNS) {
@@ -55,7 +56,8 @@ export function scan(text, guild) {
       }
 
       // Skip very short titles
-      if (!title || title.length < 3) continue;
+      if (!title || title.length < 6) continue;
+      if (title.split(/\s+/).length < 2) continue;
 
       // Resolve name to user ID (best-effort)
       let assigneeId = null;
@@ -79,6 +81,16 @@ export function scan(text, guild) {
   }
 
   return candidates;
+}
+
+function normalizeTranscriptText(text) {
+  if (!text) return '';
+  return text
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[—–]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**

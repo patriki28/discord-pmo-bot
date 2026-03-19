@@ -8,7 +8,18 @@ vi.mock('fs/promises', () => ({
   unlink: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('../../config.js', () => ({
-  config: { whisperPath: '/fake/whisper', whisperModel: '/fake/model.bin' },
+  config: {
+    whisperPath: '/fake/whisper',
+    whisperModel: '/fake/model.bin',
+    transcription: {
+      profile: 'balanced',
+      language: 'en',
+      threads: 4,
+      timeoutMs: 30000,
+      retries: 0,
+      queueConcurrency: 1,
+    },
+  },
   validateWhisperConfig: vi.fn(),
 }));
 
