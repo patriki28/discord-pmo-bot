@@ -59,7 +59,7 @@ The bot is designed for small-to-medium teams running standups, syncs, or recurr
 4. Audio is decoded from Opus to PCM, buffered per user
 5. On 1 second of silence, the buffer is flushed, converted to WAV, and sent to whisper.cpp
 6. Transcription result is posted to the text channel: `**Username:** transcribed text`
-7. When `/transcribe stop` is run, the bot posts a full timestamped transcript and leaves the channel
+7. When `/transcribe stop` is run, the bot writes a meeting minutes transcript file (`.md`) to `transcripts/`, attaches it to the channel when under 8MB, posts the full timestamped transcript as messages, and leaves the channel
 
 **Constraints:**
 - One active transcription session per server
@@ -203,14 +203,14 @@ CREATE TABLE task_reminders (
 | Create/edit/view/list tasks | Any server member |
 | Delete a task | Task creator OR users with Manage Server permission |
 | Manage task reminders | Any server member |
-| Bot channel permissions required | Connect, Speak, Send Messages, Embed Links, Mention Everyone |
+| Bot channel permissions required | Connect, Speak, Send Messages, Embed Links, Attach Files, Mention Everyone |
 
 ## 10. Privacy & Data Handling
 
 - A consent notice is posted when transcription starts; staying in the channel implies consent
 - No audio is stored permanently — temporary WAV files are deleted immediately after whisper.cpp processes them
 - PCM buffers exist only in memory during the active session
-- Transcription text is posted to Discord only (not stored in the database)
+- Transcription text is posted to Discord and saved as a meeting minutes file in `transcripts/` (configurable via `TRANSCRIPTS_DIR`)
 - The bot runs entirely on the host machine — no data leaves the local network except to Discord's API
 
 ## 11. Prerequisites
@@ -235,7 +235,7 @@ CREATE TABLE task_reminders (
 These are explicitly **not planned** but noted for potential future versions:
 
 - Multi-timezone support with per-schedule timezone selection
-- Transcript export (markdown file, PDF)
+- Transcript PDF export (markdown is implemented)
 - Concurrent transcription sessions across multiple channels
 - Whisper model selection per session (tiny/small/medium/large)
 - Meeting agenda templates tied to schedules

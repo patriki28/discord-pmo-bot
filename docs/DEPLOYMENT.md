@@ -31,6 +31,13 @@ cmake --build build --config Release
 
 Binary: `build/bin/Release/whisper-cli.exe`
 
+If `cmake` or compiler tools are missing:
+
+- Install CMake:
+  - `winget install Kitware.CMake`
+- Install Visual Studio Build Tools (C++ workload):
+  - `winget install Microsoft.VisualStudio.2022.BuildTools --override "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`
+
 ### Linux
 
 ```bash
@@ -61,6 +68,20 @@ bash models/download-ggml-model.sh medium
 ```
 
 This downloads `ggml-medium.bin` to the `models/` directory. Available sizes: `tiny`, `base`, `small`, `medium`, `large`.
+
+### Windows prebuilt fallback (no local compiler)
+
+If local compilation fails (e.g., `nmake` / `cl` missing), use prebuilt binaries:
+
+```bash
+mkdir -p tools/whisper
+curl -L https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.3/whisper-bin-x64.zip -o tools/whisper/whisper-bin-x64.zip
+```
+
+Extract the zip and point `.env` to:
+
+- `WHISPER_CPP_PATH=.../tools/whisper/bin/Release/whisper-cli.exe`
+- `WHISPER_MODEL_PATH=.../tools/whisper/models/ggml-<model>.bin`
 
 ## Quick Start (Development)
 
@@ -216,3 +237,18 @@ docker compose exec pmo-bot node src/commands/deploy.js
 - WAL mode is enabled for better concurrent read performance.
 - Temp audio files are written to the OS temp directory and cleaned up immediately after transcription.
 - All times use Asia/Manila (PHT) timezone.
+
+## Troubleshooting
+
+### `Whisper executable not found ... ENOENT`
+
+Cause: `WHISPER_CPP_PATH` points to a placeholder or non-existent file.
+
+Fix:
+
+1. Verify executable exists:
+   - `Test-Path "C:/.../whisper-cli.exe"`
+2. Verify model exists:
+   - `Test-Path "C:/.../ggml-*.bin"`
+3. Update `.env` with real absolute paths.
+4. Restart bot process.

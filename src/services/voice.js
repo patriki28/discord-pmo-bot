@@ -4,13 +4,18 @@ import {
   entersState,
   EndBehaviorType,
 } from '@discordjs/voice';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
 import prism from 'prism-media';
 import { UserAudioBuffer } from '../utils/audio.js';
+import { config } from '../config.js';
 import { transcribe } from './transcription.js';
 import { scan, postTaskConfirmation } from './taskDetector.js';
 
 // One session per guild
 const sessions = new Map();
+
+const DISCORD_FILE_LIMIT = 8 * 1024 * 1024; // 8MB
 
 export function getSession(guildId) {
   return sessions.get(guildId);
@@ -25,6 +30,7 @@ export class VoiceSession {
     this.userBuffers = new Map();
     this.transcript = [];
     this.active = false;
+    this.startedAt = null;
   }
 
   async start() {
@@ -41,6 +47,7 @@ export class VoiceSession {
     });
 
     this.active = true;
+    this.startedAt = new Date();
     sessions.set(this.guild.id, this);
 
     // Handle reconnection
@@ -55,9 +62,10 @@ export class VoiceSession {
       }
     });
 
-    // Listen for speaking users
+    // Listen for speaking users (guard against double subscription per discordjs#8438)
     this.connection.receiver.speaking.on('start', (userId) => {
       if (!this.active) return;
+      if (this.connection.receiver.subscriptions.has(userId)) return;
       this.subscribeToUser(userId);
     });
   }
@@ -135,37 +143,120 @@ export class VoiceSession {
     this.active = false;
     sessions.delete(this.guild.id);
 
-    // Flush remaining audio
-    for (const userId of this.userBuffers.keys()) {
-      await this.flushUser(userId);
-    }
+    try {
+      // Flush remaining audio
+      for (const userId of this.userBuffers.keys()) {
+        await this.flushUser(userId);
+      }
 
-    // Post full transcript
-    if (this.transcript.length > 0) {
       const lines = this.transcript.map(
         (t) => `[${new Date(t.timestamp).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}] **${t.username}:** ${t.text}`
       );
 
-      // Split into chunks if too long (Discord 2000 char limit)
-      const chunks = [];
-      let current = '**Full Transcript:**\n';
-      for (const line of lines) {
-        if (current.length + line.length + 1 > 1950) {
-          chunks.push(current);
-          current = '';
+      if (this.transcript.length > 0) {
+        // Write transcript file locally
+        const { filePath, content } = buildMeetingMinutesMarkdown(
+          this.transcript,
+          this.guild,
+          this.voiceChannel,
+          this.startedAt
+        );
+        const savedPath = await writeTranscriptFile(filePath, content);
+        if (savedPath) {
+          // Attach to Discord if under size limit
+          const buffer = Buffer.from(content, 'utf-8');
+          if (buffer.length <= DISCORD_FILE_LIMIT) {
+            try {
+              await this.textChannel.send({
+                content: '📄 **Meeting Minutes** (saved locally)',
+                files: [{ attachment: buffer, name: path.basename(filePath) }],
+              });
+            } catch (err) {
+              console.error('Failed to attach transcript to Discord:', err.message);
+            }
+          }
         }
-        current += line + '\n';
-      }
-      if (current.trim()) chunks.push(current);
 
-      for (const chunk of chunks) {
-        await this.textChannel.send(chunk);
+        // Post full transcript as messages (chunked)
+        const chunks = [];
+        let current = '**Full Transcript:**\n';
+        for (const line of lines) {
+          if (current.length + line.length + 1 > 1950) {
+            chunks.push(current);
+            current = '';
+          }
+          current += line + '\n';
+        }
+        if (current.trim()) chunks.push(current);
+
+        for (const chunk of chunks) {
+          await this.textChannel.send(chunk);
+        }
+      }
+    } finally {
+      if (this.connection) {
+        this.connection.destroy();
+        this.connection = null;
       }
     }
+  }
+}
 
-    if (this.connection) {
-      this.connection.destroy();
-      this.connection = null;
-    }
+/**
+ * Build meeting minutes markdown content.
+ * @param {Array<{username: string, text: string, timestamp: string}>} transcript
+ * @param {import('discord.js').Guild} guild
+ * @param {import('discord.js').VoiceChannel} voiceChannel
+ * @param {Date|null} startedAt
+ * @returns {{ filePath: string, content: string }}
+ */
+export function buildMeetingMinutesMarkdown(transcript, guild, voiceChannel, startedAt) {
+  const dateStr = new Date().toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const duration = startedAt
+    ? `${Math.round((Date.now() - startedAt.getTime()) / 60000)} min`
+    : '—';
+  const transcriptLines = transcript.map(
+    (t) =>
+      `[${new Date(t.timestamp).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}] **${t.username}:** ${t.text}`
+  );
+  const content = `# Meeting Minutes
+
+**Server:** ${guild.name}
+**Channel:** ${voiceChannel?.name ?? 'Unknown'}
+**Date:** ${dateStr}
+**Duration:** ${duration}
+
+---
+
+## Transcript
+
+${transcriptLines.join('\n')}
+`;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filePath = path.join(config.transcriptsDir, `transcript-${guild.id}-${timestamp}.md`);
+  return { filePath, content };
+}
+
+/**
+ * Write transcript file to disk. Creates directory if missing.
+ * @param {string} filePath
+ * @param {string} content
+ * @returns {Promise<string|null>} Resolved path or null on error
+ */
+async function writeTranscriptFile(filePath, content) {
+  try {
+    const dir = path.dirname(filePath);
+    await mkdir(dir, { recursive: true });
+    await writeFile(filePath, content, 'utf-8');
+    return filePath;
+  } catch (err) {
+    console.error('Failed to write transcript file:', err.message);
+    return null;
   }
 }

@@ -3,7 +3,7 @@ import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { config } from '../config.js';
+import { config, validateWhisperConfig } from '../config.js';
 import { pcmToWav } from '../utils/audio.js';
 
 export async function transcribe(pcmBuffer, username) {
@@ -28,6 +28,13 @@ export async function transcribe(pcmBuffer, username) {
 
 function runWhisper(wavPath) {
   return new Promise((resolve, reject) => {
+    try {
+      validateWhisperConfig();
+    } catch (err) {
+      console.error(err.message);
+      return resolve(null);
+    }
+
     execFile(
       config.whisperPath,
       [
@@ -40,7 +47,10 @@ function runWhisper(wavPath) {
       { timeout: 30000 },
       (err, stdout, stderr) => {
         if (err) {
-          console.error('Whisper error:', err.message);
+          const msg = err.code === 'ENOENT'
+            ? `Whisper binary not found at: ${config.whisperPath}\n  → Update WHISPER_CPP_PATH in .env to the actual path (see README for whisper.cpp setup)`
+            : `Whisper error: ${err.message}`;
+          console.error(msg);
           return resolve(null);
         }
         resolve(stdout);
